@@ -20,9 +20,9 @@ function bayes_stat() {
 function bayes_predict() {
     bayes_pz_input=/gaoyunxiang/model_merge/bayes_pz_output
     bayes_pwz_input=/gaoyunxiang/model_merge/bayes_pwz_output
-    test_input=/gaoyunxiang/model_merge/test_output
+    test_input=/gaoyunxiang/model_merge/test_output/part-00000
     lambda=1.9
-    $spark_path/spark-submit  --name "model bayes predict @_@gaoyunxiang" --class "BayesPredict" --master yarn-cluster  --num-executors 100  --driver-memory 60g  --executor-memory 40g  --executor-cores 8  target/scala-2.10/*.jar \
+    $spark_path/spark-submit  --name "model bayes predict @_@gaoyunxiang" --class "BayesPredict" --master yarn-cluster  --num-executors 40  --driver-memory 60g  --executor-memory 50g  --executor-cores 5  target/scala-2.10/*.jar \
         "$lambda" \
         "$bayes_pz_input" \
         "$bayes_pwz_input" \

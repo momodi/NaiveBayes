@@ -15,38 +15,40 @@ object BayesPredict {
     def cal_test(input:String, pwz_broadcase:Broadcast[immutable.Map[Long, Array[(Int, Double)]]], pz:immutable.Map[Int, Double]) {
         val pz_sum = pz.map(_._2).sum
 
-        val test = SparkCommon.sc.textFile(input, 200).mapPartitions { lines =>
+        val test = SparkCommon.sc.textFile(input, 200).mapPartitions { ones =>
             val pwz_b = pwz_broadcase.value
-            lines.map { line =>
-                val sp = line.split("\t")
-                val item = sp(0).myhash()
-                val cag = sp(1).toInt
-                val dict = mutable.HashMap[Int, ArrayBuffer[Double]]()
+            ones.grouped(100).flatMap { lines =>
+                lines.par.map { line =>
+                    val sp = line.split("\t")
+                    val item = sp(0).myhash()
+                    val cag = sp(1).toInt
+                    val dict = mutable.HashMap[Int, ArrayBuffer[Double]]()
 
-                sp(2).split("@").foreach { w =>
-                    val whash = w.myhash()
-                    if (pwz_b.contains(whash)) {
-                        pwz_b(whash).foreach { case (z, v) =>
-                            if (dict.contains(z)) {
-                                dict(z).append(v)
-                            } else {
-                                dict(z) = ArrayBuffer(v)
+                    sp(2).split("@").foreach { w =>
+                        val whash = w.myhash()
+                        if (pwz_b.contains(whash)) {
+                            pwz_b(whash).foreach { case (z, v) =>
+                                if (dict.contains(z)) {
+                                    dict(z).append(v)
+                                } else {
+                                    dict(z) = ArrayBuffer(v)
+                                }
                             }
                         }
                     }
-                }
-                val sorted = dict.toArray.map { case (z, vs) =>
-                    val sum = vs.sortBy(-_).sum
-                    (z, sum)
-                }.sortBy { case (k, v) =>
-                    -(v + math.log(1.5 + pz(k) * 1.0 / pz_sum))
-                }
-                if (sorted.isEmpty) {
-                    (0, 0, 1)
-                } else if (sorted(0)._1 == cag) {
-                    (1, 1, 1)
-                } else {
-                    (0, 1, 1)
+                    val sorted = dict.toArray.map { case (z, vs) =>
+                        val sum = vs.sortBy(-_).sum
+                        (z, sum)
+                    }.sortBy { case (k, v) =>
+                        -(v + math.log(1.5 + pz(k) * 1.0 / pz_sum))
+                    }
+                    if (sorted.isEmpty) {
+                        (0, 0, 1)
+                    } else if (sorted(0)._1 == cag) {
+                        (1, 1, 1)
+                    } else {
+                        (0, 1, 1)
+                    }
                 }
             }
         }.reduce { case ((a1, a2, a3), (b1, b2, b3)) =>
