@@ -32,7 +32,7 @@ object Bayes {
         }.reduceByKey { (a, b) =>
             a + b
         }.filter { case ((w, cag), v) =>
-            v > 10
+            v > 0
         }.groupBy { case ((w, z), v) =>
             w
         }.map { case (w, ps) =>

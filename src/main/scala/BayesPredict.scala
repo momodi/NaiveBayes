@@ -22,7 +22,7 @@ object BayesPredict {
             (sp(0).toInt, sp(1).toDouble)
         }.collect().toMap
 
-        val test_w_z = SparkCommon.sc.textFile(test_input).flatMap { line =>
+        val test_w_item = SparkCommon.sc.textFile(test_input).flatMap { line =>
             val sp = line.split("\t")
             val item = sp(0).toLong
             val real_z = sp(1).toInt
@@ -47,7 +47,7 @@ object BayesPredict {
                 (z, one_sp(1).toInt + 1)
             }
             (w, vec)
-        }.join(test_w_z).map {
+        }.join(test_w_item).map {
             case (whash, (vec, (item, real_z))) =>
                 ((item, real_z), vec)
         }.groupByKey().mapPartitions {
@@ -66,7 +66,7 @@ object BayesPredict {
                                         }
                                 }
                                 val sorted = pzi.toArray.sortBy { case (k, v) =>
-                                    -(v + math.log(1.0 * pz(k) / pz_sum))
+                                    -(v + math.log(1.0 * pz(k) / (lambda * w_length * pz.size + pz_sum)))
                                 }
                                 if (sorted.head._2 == sorted.last._2) {
                                     (0, 0, 1)
