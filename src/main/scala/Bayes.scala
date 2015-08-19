@@ -12,17 +12,15 @@ object Bayes {
             val sp = line.split("\t")
             (sp(1).toInt, sp(2))
         }.cache()
-        val pz_stat = ori.map { case (cag, features) =>
+        ori.map { case (cag, features) =>
             (cag, 1)
         }.reduceByKey { (a, b) =>
             a + b
-        }.collectAsMap()
-        val pz_stat_output = pz_stat.toArray.map { case (k, v) =>
+        }.map { case (k, v) =>
             "%s\t%d".format(k, v)
-        }
-        SparkCommon.sc.parallelize(pz_stat_output).saveAsTextFile(bayes_pz_output)
+        }.repartition(1).saveAsTextFile(bayes_pz_output)
 
-        val pwz_stat = ori.mapPartitions { case ones =>
+        ori.mapPartitions { case ones =>
             val dict = mutable.HashMap[(String, Int), Int]().withDefaultValue(0)
             ones.foreach { case (cag, features) =>
                 features.split("@").distinct.foreach { w =>
@@ -46,6 +44,6 @@ object Bayes {
                 "%d@%d".format(z, v)
             }
             "%s\t%s".format(w, p.mkString("#"))
-        }.repartition(50).saveAsTextFile(bayes_pwz_output)
+        }.repartition(1).saveAsTextFile(bayes_pwz_output)
     }
 }
