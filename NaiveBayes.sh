@@ -1,6 +1,6 @@
 #!/bin/sh
 spark_path=/home/resys/var/spark-1.4.1-bin-hadoop2.4/bin
-ip=172.16.1.92
+ip=172.16.1.7
 function compile() {
     rsync -C -apr --inplace --progress --partial -e "ssh -c arcfour" gaoyunxiang@$ip:~/workspace/exp/NaiveBayes/src . || return  1
     sbt assembly
@@ -21,8 +21,8 @@ function bayes_predict() {
     bayes_pz_input=/gaoyunxiang/model_merge/bayes_pz_output
     bayes_pwz_input=/gaoyunxiang/model_merge/bayes_pwz_output
     test_input=/gaoyunxiang/model_merge/test_output/part-00000
-    lambda=1.9
-    $spark_path/spark-submit  --name "model bayes predict @_@gaoyunxiang" --class "BayesPredict" --master yarn-cluster  --num-executors 40  --driver-memory 60g  --executor-memory 50g  --executor-cores 5  target/scala-2.10/*.jar \
+    lambda=1
+    $spark_path/spark-submit  --name "model bayes predict @_@gaoyunxiang" --class "BayesPredict" --master yarn-cluster  --num-executors 50  --driver-memory 60g  --executor-memory 70g  --executor-cores 2  target/scala-2.10/*.jar \
         "$lambda" \
         "$bayes_pz_input" \
         "$bayes_pwz_input" \

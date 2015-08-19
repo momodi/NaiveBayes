@@ -12,35 +12,32 @@ import scala.collection.mutable.ArrayBuffer
 import scala.collection.parallel.mutable._
 object BayesPredict {
 
-    def cal_test(input:String, pwz_broadcase:Broadcast[immutable.Map[Long, Array[(Int, Double)]]], pz:immutable.Map[Int, Double]) {
+    def cal_test(input:String, pwz_broadcase:Broadcast[immutable.Map[Long, immutable.Map[Int, Int]]], pz:immutable.Map[Int, Double], lambda:Double) {
         val pz_sum = pz.map(_._2).sum
 
-        val test = SparkCommon.sc.textFile(input, 200).mapPartitions { ones =>
+        val test = SparkCommon.sc.textFile(input, 100).coalesce(100).mapPartitions { ones =>
             val pwz_b = pwz_broadcase.value
             ones.grouped(100).flatMap { lines =>
                 lines.par.map { line =>
                     val sp = line.split("\t")
                     val item = sp(0).myhash()
                     val cag = sp(1).toInt
-                    val dict = mutable.HashMap[Int, ArrayBuffer[Double]]()
+                    val pzi = mutable.HashMap[Int, Double]().withDefaultValue(0.0)
 
                     sp(2).split("@").foreach { w =>
                         val whash = w.myhash()
-                        if (pwz_b.contains(whash)) {
-                            pwz_b(whash).foreach { case (z, v) =>
-                                if (dict.contains(z)) {
-                                    dict(z).append(v)
+                        pz.foreach {
+                            case (z, zc) => {
+                                if (pwz_b.contains(whash) && pwz_b(whash).contains(z)) {
+                                    pzi(z) += math.log(1.0 * pwz_b(whash)(z) / pz(z))
                                 } else {
-                                    dict(z) = ArrayBuffer(v)
+                                    pzi(z) += math.log(1.0 * lambda / pz(z))
                                 }
                             }
                         }
                     }
-                    val sorted = dict.toArray.map { case (z, vs) =>
-                        val sum = vs.sortBy(-_).sum
-                        (z, sum)
-                    }.sortBy { case (k, v) =>
-                        -(v + math.log(1.5 + pz(k) * 1.0 / pz_sum))
+                    val sorted = pzi.toArray.sortBy { case (k, v) =>
+                        -(v + math.log(1.0 * pz(k) / pz_sum))
                     }
                     if (sorted.isEmpty) {
                         (0, 0, 1)
@@ -70,13 +67,15 @@ object BayesPredict {
             val w = sp(0).myhash()
             val p = sp(1).split("#").map { one =>
                 val one_sp = one.split("@")
-                (one_sp(0).toInt, math.log(lambda + one_sp(1).toDouble))
-            }
+                val z = one_sp(0).toInt
+                (z, one_sp(1).toInt)
+            }.toMap
             (w, p)
         }.collect().toMap
+
         val pwz_broadcase = SparkCommon.sc.broadcast(pwz)
 
-        cal_test(test_input, pwz_broadcase, pz)
+        cal_test(test_input, pwz_broadcase, pz, lambda)
 
 
     }

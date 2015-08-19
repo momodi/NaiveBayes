@@ -25,7 +25,7 @@ object Bayes {
         val pwz_stat = ori.mapPartitions { case ones =>
             val dict = mutable.HashMap[(String, Int), Int]().withDefaultValue(0)
             ones.foreach { case (cag, features) =>
-                features.split("@").foreach { w =>
+                features.split("@").distinct.foreach { w =>
                     val k = (w, cag)
                     dict(k) = dict(k) + 1
                 }
@@ -39,11 +39,11 @@ object Bayes {
             w
         }.map { case (w, ps) =>
             val p = ps.map { case ((ww, z), v) =>
-                (z, v * 1.0 / pz_stat(z))
+                (z, v)
             }.toArray.sortBy { case (z, v) =>
                 -v
             }.map { case (z, v) =>
-                "%s@%f".format(z, v)
+                "%d@%d".format(z, v)
             }
             "%s\t%s".format(w, p.mkString("#"))
         }.repartition(50).saveAsTextFile(bayes_pwz_output)
