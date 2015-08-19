@@ -11,7 +11,7 @@ function bayes_stat() {
     bayes_pwz_output=/gaoyunxiang/model_merge/bayes_pwz_output
     hdfs dfs -rm -r $bayes_pz_output
     hdfs dfs -rm -r $bayes_pwz_output
-    $spark_path/spark-submit  --name "model bayes stat @_@gaoyunxiang" --class "Bayes" --master yarn-cluster  --num-executors 200  --driver-memory 60g  --executor-memory 20g  --executor-cores 1  target/scala-2.10/*.jar \
+    $spark_path/spark-submit  --name "model bayes stat @_@gaoyunxiang" --class "Bayes" --master yarn-cluster  --num-executors 400  --driver-memory 60g  --executor-memory 10g  --executor-cores 1  target/scala-2.10/*.jar \
         "$training_input" \
         "$bayes_pz_output" \
         "$bayes_pwz_output" \
@@ -21,12 +21,17 @@ function bayes_predict() {
     bayes_pz_input=/gaoyunxiang/model_merge/bayes_pz_output
     bayes_pwz_input=/gaoyunxiang/model_merge/bayes_pwz_output
     test_input=/gaoyunxiang/model_merge/test_output/part-00000
-    lambda=1
-    $spark_path/spark-submit  --name "model bayes predict @_@gaoyunxiang" --class "BayesPredict" --master yarn-cluster  --num-executors 50  --driver-memory 60g  --executor-memory 70g  --executor-cores 2  target/scala-2.10/*.jar \
+    lambda=0.000005
+    $spark_path/spark-submit  --name "model bayes predict @_@gaoyunxiang" --class "BayesPredict" --master yarn-cluster  --num-executors 100  --driver-memory 60g  --executor-memory 20g  --executor-cores 2  target/scala-2.10/*.jar \
         "$lambda" \
         "$bayes_pz_input" \
         "$bayes_pwz_input" \
         "$test_input" \
         || return  1
+}
+function lambda_try() {
+for ((i = 1; i <= 9; i += 1)); do
+    echo "bayes_predict 0.000$i"
+done
 }
 $@

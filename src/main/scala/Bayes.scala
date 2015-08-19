@@ -44,6 +44,6 @@ object Bayes {
                 "%d@%d".format(z, v)
             }
             "%s\t%s".format(w, p.mkString("#"))
-        }.repartition(1).saveAsTextFile(bayes_pwz_output)
+        }.repartition(10).saveAsTextFile(bayes_pwz_output)
     }
 }
