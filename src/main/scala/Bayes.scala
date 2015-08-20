@@ -13,17 +13,17 @@ object Bayes {
             (sp(1).toInt, sp(2))
         }.cache()
         ori.map { case (cag, features) =>
-            (cag, 1)
+            (cag, (1, features.split("@").slice(0, 100).distinct.length))
         }.reduceByKey { (a, b) =>
-            a + b
+            (a._1 + b._1, a._2 + b._2)
         }.map { case (k, v) =>
-            "%s\t%d".format(k, v)
+            "%s\t%d\t%d".format(k, v._1, v._2)
         }.repartition(1).saveAsTextFile(bayes_pz_output)
 
         ori.mapPartitions { case ones =>
             val dict = mutable.HashMap[(String, Int), Int]().withDefaultValue(0)
             ones.foreach { case (cag, features) =>
-                features.split("@").distinct.foreach { w =>
+                features.split("@").slice(0, 100).distinct.foreach { w =>
                     val k = (w, cag)
                     dict(k) = dict(k) + 1
                 }

@@ -13,14 +13,23 @@ import scala.collection.parallel.mutable._
 object BayesPredict {
 
     def main(args:Array[String]): Unit = {
-        val lambda = args(0).toDouble
-        val bayes_pz_input = args(1)
-        val bayes_pwz_input = args(2)
-        val test_input = args(3)
-        val pz = SparkCommon.sc.textFile(bayes_pz_input).map { line =>
+        val alpha = args(0).toDouble
+        val beta = args(1).toDouble
+        val bayes_pz_input = args(2)
+        val bayes_pwz_input = args(3)
+        val test_input = args(4)
+        val pz_ori = SparkCommon.sc.textFile(bayes_pz_input).map { line =>
             val sp = line.split("\t")
-            (sp(0).toInt, sp(1).toDouble)
+            (sp(0).toInt, (sp(1).toDouble, sp(2).toDouble))
         }.collect().toMap
+        val pzc = pz_ori.map{
+            case (k, v) =>
+                (k, v._1)
+        }
+        val pzwc = pz_ori.map {
+            case (k, v) =>
+                (k, v._2)
+        }
 
         val test_w_item = SparkCommon.sc.textFile(test_input).flatMap { line =>
             val sp = line.split("\t")
@@ -30,13 +39,7 @@ object BayesPredict {
                 (w.myhash(), (item, real_z))
             }
         }.repartition(500)
-        val pz_sum = pz.toIterator.map(_._2).sum
-
-        val w_length = SparkCommon.sc.textFile(bayes_pwz_input).map { line =>
-            val sp = line.split("\t")
-            sp(0).myhash()
-        }.distinct().count()
-
+        val pz_sum = pzc.toIterator.map(_._2).sum
 
         val test_output = SparkCommon.sc.textFile(bayes_pwz_input, 500).map { line =>
             val sp = line.split("\t")
@@ -44,7 +47,7 @@ object BayesPredict {
             val vec = sp(1).split("#").map { one =>
                 val one_sp = one.split("@")
                 val z = one_sp(0).toInt
-                (z, one_sp(1).toInt + 1)
+                (z, one_sp(1).toInt)
             }
             (w, vec)
         }.join(test_w_item).map {
@@ -60,13 +63,13 @@ object BayesPredict {
                                 iter.foreach {
                                     case one =>
                                         val one_dict = one.toMap
-                                        pz.foreach {
+                                        pzc.foreach {
                                             case (z, zc) =>
-                                                pzi(z) += math.log((lambda + one_dict.getOrElse(z, 0)) / (pz(z) + w_length * lambda))
+                                                pzi(z) += math.log((alpha + one_dict.getOrElse(z, 0)) / (pzwc(z) + 2 * alpha))
                                         }
                                 }
                                 val sorted = pzi.toArray.sortBy { case (k, v) =>
-                                    -(v + math.log(1.0 * pz(k) / (lambda * w_length * pz.size + pz_sum)))
+                                    -(v + math.log((pzc(k) + beta) / (beta * pzc.size + pz_sum)))
                                 }
                                 if (sorted.head._2 == sorted.last._2) {
                                     (0, 0, 1)
