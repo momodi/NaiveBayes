@@ -29,9 +29,4 @@ function bayes_predict() {
         "$test_input" \
         || return  1
 }
-function lambda_try() {
-for ((i = 1; i <= 9; i += 1)); do
-    echo "bayes_predict 0.000$i"
-done
-}
 $@
